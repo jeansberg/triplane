@@ -1,25 +1,31 @@
 audio = require("audio")
 controls = require("controls")
-graphics = require("graphics")
+plane = require("plane")
+map = require("map")
 
 function love.load()
-  timer = 0
-  throttle = 1
+    timer = 0
 
-  love.window.setMode(800, 600)
+    plane.init(20, 400, 1)
+    love.window.setMode(1024, 768)
 end
 
 function love.draw()
-  love.graphics.rectangle("fill", 200, 200 - throttle * 100, 60,120)
-  love.graphics.print(math.ceil(throttle*100), 300, 250)
+    love.graphics.setColor(0.2, 0.2, 1, 1)
+    love.graphics.rectangle("fill", 0, 0, 1024, 768)
+    love.graphics.setColor(1, 1, 1, 1)
+
+    love.graphics.rectangle("fill", 900, 700 - plane.throttle * 100, 20, 40)
+    love.graphics.print(math.ceil(plane.throttle * 100), 850, 600)
+
+    map.draw()
+    plane.draw()
 end
 
 function love.update(dt)
-  timer=timer+dt
-  controls.update(dt, setThrottle)
-  audio.playEngine(throttle)
-end
-
-function setThrottle(mod)
-  throttle = math.max(math.min(2, throttle + mod * 2), 0.5)
+    timer = timer + dt
+    -- controls.update(dt, setThrottle)
+    audio.playEngine(1 + plane.throttle * 0.3 - 0.5)
+    audio.playWind(plane.speed)
+    plane.update(dt)
 end
