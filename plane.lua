@@ -1,10 +1,15 @@
+animation = require("animation")
+
 imageSide = love.graphics.newImage("resources/images/plane_side.png")
 imageTop = love.graphics.newImage("resources/images/plane_top.png")
 imageBottom = love.graphics.newImage("resources/images/plane_bottom.png")
+imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
 
 local plane = {}
 
 local flipStates = {'none', 'flipped', 'flipping', 'flippingBack'}
+local flipCooldownMax = 0.5
+local flipAnimationTimerMax = 0.2
 
 function plane.init(x, y, throttle)
     plane.x = x
@@ -15,11 +20,17 @@ function plane.init(x, y, throttle)
     plane.speed = 100
 
     plane.flipState = 'none'
-    plane.flipCooldown = 0.5
-    plane.flipAnimationTimer = 0.2
+    plane.flipCooldown = flipCooldownMax
+    plane.flipAnimationTimer = flipAnimationTimerMax
+
+    plane.smokeSystem = getSmoke()
+    plane.speedLineSystem = getSpeedLines()
 end
 
 function plane.draw()
+    love.graphics.draw(plane.smokeSystem, 0, 0)
+    love.graphics.draw(plane.speedLineSystem, 0, 0)
+
     if plane.flipState == 'flipping' then
         image = imageTop
     elseif plane.flipState == 'flippingBack' then
@@ -39,13 +50,25 @@ end
 
 function love.keypressed(key)
     if key == "f" and plane.flipCooldown >= 0.5 then
-        plane.startFlip()
+        animation.startFlip(plane)
     end
 end
 
 function plane.update(dt)
-    updateTimers(dt)
-    plane.updateFlip()
+    updateTimers(plane, dt)
+    plane.smokeSystem:setPosition(plane.x, plane.y)
+    plane.smokeSystem:setDirection(math.rad(plane.angle + 90))
+    plane.smokeSystem:setEmissionRate(plane.throttle * 100)
+
+    plane.smokeSystem:update(dt)
+
+    plane.speedLineSystem:setPosition(plane.x, plane.y)
+    plane.speedLineSystem:setDirection(math.rad(plane.angle + 90))
+    plane.speedLineSystem:setEmissionRate(plane.speed >= 200 and plane.speed / 4 or 0)
+
+    plane.speedLineSystem:update(dt)
+
+    animation.updateFlip(plane)
 
     if love.keyboard.isDown("up") then
         plane.throttle = math.min(2, plane.throttle + dt)
@@ -64,14 +87,6 @@ function plane.update(dt)
     plane.speed = getSpeed(plane.speed, plane.throttle, plane.angle, dt)
     plane.angle = getAngle(plane.angle, plane.stick, plane.speed, dt)
 
-    if math.abs(plane.angle) >= 360 then
-        plane.angle = 0
-    end
-
-    -- Calculate top speed
-
-    -- Calculate angle?
-
     delta = dt * plane.speed
     deltaX = math.cos(math.rad(plane.angle - 90)) * delta
     deltaY = math.sin(math.rad(plane.angle - 90)) * delta
@@ -80,34 +95,8 @@ function plane.update(dt)
     plane.y = plane.y + deltaY
 end
 
-function plane.startFlip()
-    plane.flipAnimationTimer = 0
-
-    if plane.flipState == 'none' then
-        plane.flipState = 'flipping'
-    elseif plane.flipState == 'flipped' then
-        plane.flipState = 'flippingBack'
-    end
-end
-
-function plane.updateFlip()
-    if plane.flipState == 'none' or plane.flipState == 'flipped' then
-        return
-    end
-
-    if plane.flipAnimationTimer >= 0.2 then
-        if plane.flipState == 'flipping' then
-            plane.flipState = 'flipped'
-        else
-            plane.flipState = 'none'
-        end
-    end
-
-end
-
 function getSpeed(speed, throttle, angle, dt)
     gravityMod = math.cos(math.rad(angle)) * 100
-
     targetSpeed = math.max(0, throttle * 100 - gravityMod)
     return lerp(speed, targetSpeed, dt)
 end
@@ -121,6 +110,10 @@ function getAngle(angle, stick, speed, dt)
         newAngle = angle
     end
 
+    if math.abs(angle) >= 360 then
+        angle = 0
+    end
+
     return newAngle
 end
 
@@ -128,14 +121,39 @@ function lerp(a, b, t)
     return a * (1 - t) + b * t
 end
 
-function updateTimers(dt)
-    if plane.flipCooldown <= 0.5 then
+function updateTimers(plane, dt)
+    if plane.flipCooldown <= flipCooldownMax then
         plane.flipCooldown = plane.flipCooldown + dt
     end
 
-    if plane.flipAnimationTimer <= 0.2 then
+    if plane.flipAnimationTimer <= flipAnimationTimerMax then
         plane.flipAnimationTimer = plane.flipAnimationTimer + dt
     end
+end
+
+function getSmoke()
+    local imageData = love.image.newImageData(1, 1)
+    imageData:setPixel(0, 0, 0.8, 0.8, 0.8, 0.5)
+    local image = love.graphics.newImage(imageData)
+
+    local particleSystem = love.graphics.newParticleSystem(image, 1000)
+    particleSystem:setParticleLifetime(.7, 1)
+    particleSystem:setSizes(2, 4)
+    particleSystem:setSpread(0.5)
+    particleSystem:setSpeed(20, 30)
+
+    return particleSystem
+end
+
+function getSpeedLines()
+    local particleSystem = love.graphics.newParticleSystem(imageSpeedLine, 1000)
+    particleSystem:setEmissionArea('normal', 0, 5)
+    particleSystem:setParticleLifetime(0.1, 0.2)
+    particleSystem:setSizes(1, 1)
+    particleSystem:setSpread(0)
+    particleSystem:setSpeed(100, 200)
+
+    return particleSystem
 end
 
 return plane
