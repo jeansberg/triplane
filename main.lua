@@ -4,8 +4,6 @@ plane = require("plane")
 map = require("map")
 
 function love.load()
-    timer = 0
-
     plane.init(20, 400, 1)
     love.window.setMode(1024, 768)
 end
@@ -31,14 +29,7 @@ function drawControls()
 end
 
 function love.update(dt)
-    timer = timer + dt
     audio.playEngine(1 + plane.throttle * 0.3 - 0.5)
     audio.playWind(plane.speed)
     plane.update(dt)
-
-    updateCollisions(plane, map)
-end
-
-function updateCollisions(plane, map)
-
 end

@@ -1,23 +1,28 @@
+constants = require("constants")
+
 local audio = {}
 
-engineSound = love.audio.newSource("resources/audio/engine2.wav", "static")
+local engineSound = love.audio.newSource("resources/audio/engine2.wav", "static")
 engineSound:setLooping(true)
 
-windSound = love.audio.newSource("resources/audio/wind.wav", "static")
+local windSound = love.audio.newSource("resources/audio/wind.wav", "static")
 windSound:setLooping(true)
 
+local windThreshold = 200
+
+--- Loops an engine sound with pitch depending on throttle
 function audio.playEngine(throttle)
     engineSound:setPitch(throttle)
     engineSound:play()
 end
 
+--- Loops a wind sound with pitch and volume depending on speed
 function audio.playWind(speed)
-    if speed < 200 then
-        return
-    end
-    level = speed / 200 - 0.5
-    windSound:setPitch(level * 2 + 1)
-    windSound:setVolume(level * 3)
+    local pitch = math.max(0.1, speed / constants.windThreshold)
+    local volume = math.max(0.1, speed / constants.windThreshold - 0.7)
+
+    windSound:setPitch(pitch)
+    windSound:setVolume(volume)
     windSound:play()
 end
 

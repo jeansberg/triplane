@@ -1,7 +1,7 @@
 local map = {}
 map.image = love.graphics.newImage("resources/images/background.png")
 
-
+--- Draws the background
 function map.draw()
     love.graphics.draw(map.image)
 end
