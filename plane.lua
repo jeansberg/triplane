@@ -46,12 +46,20 @@ function plane.draw()
         love.graphics.draw(image, plane.x, plane.y, math.rad(plane.angle - 90), 0.2, -0.2, image:getWidth() / 2,
             image:getHeight() / 2)
     end
+
+    -- drawPoints(plane, image)
 end
 
 function love.keypressed(key)
     if key == "f" and plane.flipCooldown >= 0.5 then
         animation.startFlip(plane)
+    elseif key == 'r' then
+        plane.init(20, 400, 1)
     end
+end
+
+function resetPlane()
+    plane.init()
 end
 
 function plane.update(dt)
@@ -96,9 +104,14 @@ function plane.update(dt)
 end
 
 function getSpeed(speed, throttle, angle, dt)
-    gravityMod = math.cos(math.rad(angle)) * 100
-    targetSpeed = math.max(0, throttle * 100 - gravityMod)
-    return lerp(speed, targetSpeed, dt)
+    gravityMod = math.cos(math.rad(angle))
+    if gravityMod < 0 then
+        targetSpeed = throttle * 100 - gravityMod * 300
+        return lerp(speed, targetSpeed, dt)
+    else
+        targetSpeed = throttle * 100 - gravityMod * 300
+        return lerp(speed, targetSpeed, dt / 2)
+    end
 end
 
 function getAngle(angle, stick, speed, dt)
@@ -110,8 +123,19 @@ function getAngle(angle, stick, speed, dt)
         newAngle = angle
     end
 
-    if math.abs(angle) >= 360 then
-        angle = 0
+    if math.abs(newAngle) >= 360 and stick == 1 then
+        newAngle = 0
+    elseif newAngle <= 0 and stick == -1 then
+        newAngle = 360
+    end
+
+    -- Start diving if speed is too low
+    if speed < 50 then
+        if angle < 180 then
+            newAngle = lerp(newAngle, newAngle + 4, dt * 10)
+        else
+            newAngle = lerp(newAngle, newAngle - 4, dt * 10)
+        end
     end
 
     return newAngle
@@ -155,5 +179,38 @@ function getSpeedLines()
 
     return particleSystem
 end
+
+--[[ function drawPoints(plane, image)
+    love.graphics.push()
+    local rotation = math.rad(plane.angle - 90)
+    love.graphics.rotate(rotation)
+
+    love.graphics.setColor(1, 0, 0)
+    love.graphics.points(getPoints(plane, image))
+    love.graphics.setColor(1, 1, 1)
+
+    love.graphics.pop()
+end ]]
+
+--[[ function getPoints(plane, image)
+    point1 = {
+        x = plane.x - image:getWidth() / 10,
+        y = plane.y - image:getHeight() / 10
+    }
+    point2 = {
+        x = plane.x + image:getWidth() / 10,
+        y = plane.y - image:getHeight() / 10
+    }
+    point3 = {
+        x = plane.x - image:getWidth() / 10,
+        y = plane.y + image:getHeight() / 10
+    }
+    point4 = {
+        x = plane.x + image:getWidth() / 10,
+        y = plane.y + image:getHeight() / 10
+    }
+
+    return point1.x, point1.y, point2.x, point2.y, point3.x, point3.y, point4.x, point4.y
+end ]]
 
 return plane
