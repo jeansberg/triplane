@@ -12,9 +12,12 @@ function audio.playEngine(throttle)
 end
 
 function audio.playWind(speed)
-    level = speed/200-0.5   
-    windSound:setPitch(level*2 + 1)
-    windSound:setVolume(level*3)
+    if speed < 200 then
+        return
+    end
+    level = speed / 200 - 0.5
+    windSound:setPitch(level * 2 + 1)
+    windSound:setVolume(level * 3)
     windSound:play()
 end
 
