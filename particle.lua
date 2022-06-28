@@ -1,5 +1,7 @@
 constants = require("constants")
 
+imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
+
 local particle = {}
 
 particle.smoke = {}
@@ -24,7 +26,7 @@ end
 local function updateSmoke(plane, dt)
     particle.smoke:setPosition(plane.x, plane.y)
     particle.smoke:setDirection(math.rad(plane.angle + 90))
-    particle.smoke:setEmissionRate(plane.throttle * 100)
+    particle.smoke:setEmissionRate(plane.engineOn and plane.throttle * 100 or 0)
 
     particle.smoke:update(dt)
 end

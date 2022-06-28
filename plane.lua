@@ -5,7 +5,6 @@ flipState = require("flipState")
 imageSide = love.graphics.newImage("resources/images/plane_side.png")
 imageTop = love.graphics.newImage("resources/images/plane_top.png")
 imageBottom = love.graphics.newImage("resources/images/plane_bottom.png")
-imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
 
 local plane = {}
 
@@ -25,10 +24,13 @@ local stickState = {
 
 local flipCooldownMax = 0.5
 local flipAnimationTimerMax = 0.2
+local engineCooldownMax = 2
 
-function plane.init(x, y, throttle)
+function plane.init(x, y, throttle, toggleEngine)
     plane.x = x
     plane.y = y
+    plane.engineOn = 1
+    plane.toggleEngine = toggleEngine
     plane.stick = 0
     plane.angle = 90
     plane.throttle = throttle
@@ -37,6 +39,8 @@ function plane.init(x, y, throttle)
     plane.flipState = flipState.NONE
     plane.flipCooldown = flipCooldownMax
     plane.flipAnimationTimer = flipAnimationTimerMax
+
+    plane.engineCooldown = engineCooldownMax
 
     particle.init()
 
@@ -68,15 +72,14 @@ function plane.draw()
 end
 
 function love.keypressed(key)
-    if key == controlKey.FLIP and plane.flipCooldown >= 0.5 then
+    if key == controlKey.FLIP and plane.flipCooldown >= flipCooldownMax then
         animation.startFlip(plane)
     elseif key == 'r' then
-        plane.init(20, 400, 1)
+        plane.init(20, 400, 1, plane.toggleEngine)
+    elseif key == 'e' and plane.engineCooldown > engineCooldownMax then
+        plane.engineCooldown = 0
+        plane.toggleEngine()
     end
-end
-
-function resetPlane()
-    plane.init()
 end
 
 function plane.update(dt)
@@ -86,10 +89,12 @@ function plane.update(dt)
 
     animation.updateFlip(plane)
 
-    if love.keyboard.isDown(controlKey.UP) then
-        plane.throttle = math.min(2, plane.throttle + dt)
-    elseif love.keyboard.isDown(controlKey.DOWN) then
-        plane.throttle = math.max(plane.throttle - dt, 0)
+    if plane.engineOn then
+        if love.keyboard.isDown(controlKey.UP) then
+            plane.throttle = math.min(2, plane.throttle + dt)
+        elseif love.keyboard.isDown(controlKey.DOWN) then
+            plane.throttle = math.max(plane.throttle - dt, 0)
+        end
     end
 
     if love.keyboard.isDown(controlKey.LEFT) then
@@ -100,7 +105,7 @@ function plane.update(dt)
         plane.stick = stickState.NEUTRAL
     end
 
-    plane.speed = getSpeed(plane.speed, plane.throttle, plane.angle, dt)
+    plane.speed = getSpeed(plane.speed, plane.throttle, plane.engineOn, plane.angle, dt)
     plane.angle = getAngle(plane.angle, plane.stick, plane.speed, dt)
 
     delta = dt * plane.speed
@@ -111,13 +116,14 @@ function plane.update(dt)
     plane.y = plane.y + deltaY
 end
 
-function getSpeed(speed, throttle, angle, dt)
-    gravityMod = math.cos(math.rad(angle)) * 300
+function getSpeed(speed, throttle, engineOn, angle, dt)
+    local gravityMod = math.cos(math.rad(angle)) * 300
+    local throttleModifier = engineOn and 100 or 0
     if gravityMod < 0 then
-        targetSpeed = throttle * 100 - gravityMod
+        targetSpeed = throttle * throttleModifier - gravityMod
         return lerp(speed, targetSpeed, dt)
     else
-        targetSpeed = throttle * 100 - gravityMod
+        targetSpeed = throttle * throttleModifier - gravityMod
         return lerp(speed, targetSpeed, dt / 2)
     end
 end
@@ -160,6 +166,10 @@ function updateTimers(plane, dt)
 
     if plane.flipAnimationTimer <= flipAnimationTimerMax then
         plane.flipAnimationTimer = plane.flipAnimationTimer + dt
+    end
+
+    if plane.engineCooldown <= engineCooldownMax then
+        plane.engineCooldown = plane.engineCooldown + dt
     end
 end
 

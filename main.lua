@@ -3,8 +3,18 @@ controls = require("controls")
 plane = require("plane")
 map = require("map")
 
+local toggleEngine = function()
+    plane.engineOn = not plane.engineOn
+    if not plane.engineOn then
+        audio.playTurnoff()
+        plane.throttle = 0.5
+    else
+        audio.playTurnon()
+    end
+end
+
 function love.load()
-    plane.init(20, 400, 1)
+    plane.init(20, 400, 1, toggleEngine)
     love.window.setMode(1024, 768)
 end
 
@@ -29,7 +39,11 @@ function drawControls()
 end
 
 function love.update(dt)
-    audio.playEngine(1 + plane.throttle * 0.3 - 0.5)
+    if plane.engineOn then
+        audio.playEngine(plane.throttle)
+    end
+
     audio.playWind(plane.speed)
     plane.update(dt)
 end
+
