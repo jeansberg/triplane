@@ -65,7 +65,7 @@ end
 function particle.addScrapExplosion(x, y, number, image)
     local particleSystem = love.graphics.newParticleSystem(image, number)
     particleSystem:setParticleLifetime(1, 2)
-    particleSystem:setSizes(0.1, 0.05)
+    particleSystem:setSizes(0.1, 0.08)
     particleSystem:setSpeed(50, 75)
     particleSystem:setPosition(x, y)
 
@@ -85,13 +85,13 @@ function particle.addSmokePillar(x, y, number)
     imageData:setPixel(0, 0, 1, 1, 1, 1)
     local image = love.graphics.newImage(imageData)
 
-    local particleSystem = love.graphics.newParticleSystem(image, 1000)
-    particleSystem:setColors(1, 1, 0, 1, 1, 0.5, 0, 1, 0.5, 0.5, 0.5, 0.1)
-    particleSystem:setParticleLifetime(1, 3)
+    local particleSystem = love.graphics.newParticleSystem(image, 2000)
+    particleSystem:setColors(1, 1, 0, 1, 1, 0.5, 0, 1, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 0)
+    particleSystem:setParticleLifetime(2, 4)
     particleSystem:setSizes(5, 10)
     particleSystem:setDirection(math.rad(-90))
     particleSystem:setSpread(0.5)
-    particleSystem:setSpeed(20, 30)
+    particleSystem:setSpeed(50, 10)
     particleSystem:setPosition(x, 635)
 
     particleSystem:emit(500)
@@ -101,8 +101,12 @@ function particle.addSmokePillar(x, y, number)
 end
 
 local function updateExplosions(explosions, dt)
-    for _, value in pairs(explosions) do
-        value:update(dt)
+    for i = table.getn(explosions), 1, -1 do
+        local explosion = explosions[i]
+        explosion:update(dt)
+        if explosion:getCount() == 0 then
+            table.remove(explosions, i)
+        end
     end
 end
 
@@ -133,7 +137,6 @@ end
 function particle.update(plane, dt)
     updateSmoke(plane, dt)
     updateSpeedLines(plane, dt)
-    print(table.getn(particle.explosions))
     updateExplosions(particle.explosions, dt)
 end
 
