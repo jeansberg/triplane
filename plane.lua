@@ -1,5 +1,6 @@
 animation = require("animation")
 particle = require("particle")
+audio = require("audio")
 flipState = require("flipState")
 
 imageSide = love.graphics.newImage("resources/images/plane_side.png")
@@ -26,15 +27,15 @@ local flipCooldownMax = 0.5
 local flipAnimationTimerMax = 0.2
 local engineCooldownMax = 2
 
-function plane.init(x, y, throttle, toggleEngine)
+function plane.init(x, y, throttle)
     plane.x = x
     plane.y = y
     plane.engineOn = 1
-    plane.toggleEngine = toggleEngine
     plane.stick = 0
     plane.angle = 90
     plane.throttle = throttle
     plane.speed = 100
+    plane.destroyed = false
 
     plane.flipState = flipState.NONE
     plane.flipCooldown = flipCooldownMax
@@ -49,6 +50,14 @@ function plane.init(x, y, throttle, toggleEngine)
 end
 
 function plane.draw()
+    for _, value in pairs(particle.explosions) do
+        love.graphics.draw(value, 0, 0)
+    end
+
+    if plane.destroyed then
+        return
+    end
+
     love.graphics.draw(plane.smokeSystem, 0, 0)
     love.graphics.draw(plane.speedLineSystem, 0, 0)
 
@@ -68,24 +77,58 @@ function plane.draw()
             image:getHeight() / 2)
     end
 
-    -- drawPoints(plane, image)
+    local x = plane.x
+    local y = plane.y
+    local width = 280 / 5
+    local height = 142 / 5
+
+    --[[     love.graphics.setColor(1, 0, 0)
+    love.graphics.points(x - width / 2, y - height / 2, x + width / 2, y - height / 2, x + width / 2, y + height / 2,
+        x - width / 2, y + height / 2)
+    love.graphics.setColor(1, 1, 1) ]]
+end
+
+function plane.toggleEngine()
+    if plane.destroyed then
+        return
+    end
+
+    plane.engineOn = not plane.engineOn
+    if not plane.engineOn then
+        audio.playTurnoff()
+        plane.throttle = 0.5
+    else
+        audio.playTurnon()
+    end
 end
 
 function love.keypressed(key)
     if key == controlKey.FLIP and plane.flipCooldown >= flipCooldownMax then
         animation.startFlip(plane)
     elseif key == 'r' then
-        plane.init(20, 400, 1, plane.toggleEngine)
+        plane.init(20, 400, 1)
     elseif key == 'e' and plane.engineCooldown > engineCooldownMax then
         plane.engineCooldown = 0
         plane.toggleEngine()
+    elseif key == 'x' then
+        particle.addExplosion(400, 400)
     end
 end
 
 function plane.update(dt)
-    updateTimers(plane, dt)
-
     particle.update(plane, dt)
+
+    if plane.destroyed then
+        return
+    end
+
+    if plane.engineOn then
+        audio.playEngine(plane.throttle)
+    end
+
+    audio.playWind(plane.speed)
+
+    updateTimers(plane, dt)
 
     animation.updateFlip(plane)
 
@@ -173,37 +216,30 @@ function updateTimers(plane, dt)
     end
 end
 
---[[ function drawPoints(plane, image)
-    love.graphics.push()
-    local rotation = math.rad(plane.angle - 90)
-    love.graphics.rotate(rotation)
+function plane.getCollisionBox()
+    local x = plane.x
+    local y = plane.y
+    local width = 280 / 5
+    local height = 142 / 5
 
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.points(getPoints(plane, image))
-    love.graphics.setColor(1, 1, 1)
+    return {
+        x = x - width,
+        y = y - height,
+        width = width,
+        height = height
+    }
+end
 
-    love.graphics.pop()
-end ]]
+function plane.handleCollision(rect)
+    if plane.destroyed then
+        return
+    end
 
---[[ function getPoints(plane, image)
-    point1 = {
-        x = plane.x - image:getWidth() / 10,
-        y = plane.y - image:getHeight() / 10
-    }
-    point2 = {
-        x = plane.x + image:getWidth() / 10,
-        y = plane.y - image:getHeight() / 10
-    }
-    point3 = {
-        x = plane.x - image:getWidth() / 10,
-        y = plane.y + image:getHeight() / 10
-    }
-    point4 = {
-        x = plane.x + image:getWidth() / 10,
-        y = plane.y + image:getHeight() / 10
-    }
+    plane.destroyed = true
 
-    return point1.x, point1.y, point2.x, point2.y, point3.x, point3.y, point4.x, point4.y
-end ]]
+    audio.playExplosion()
+    audio.killSound()
+    particle.addExplosion(plane.x, plane.y)
+end
 
 return plane

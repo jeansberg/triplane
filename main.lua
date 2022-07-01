@@ -1,17 +1,6 @@
-audio = require("audio")
 controls = require("controls")
 plane = require("plane")
 map = require("map")
-
-local toggleEngine = function()
-    plane.engineOn = not plane.engineOn
-    if not plane.engineOn then
-        audio.playTurnoff()
-        plane.throttle = 0.5
-    else
-        audio.playTurnon()
-    end
-end
 
 function love.load()
     plane.init(20, 400, 1, toggleEngine)
@@ -39,11 +28,23 @@ function drawControls()
 end
 
 function love.update(dt)
-    if plane.engineOn then
-        audio.playEngine(plane.throttle)
-    end
+    checkCollisions(plane, map)
+    checkCollisions(map, plane)
 
-    audio.playWind(plane.speed)
     plane.update(dt)
 end
 
+function checkCollisions(object1, object2)
+    local r1 = object1.getCollisionBox()
+    local r2 = object2.getCollisionBox()
+
+    local xIntersect = r1.x + r1.width > r2.x and r1.x < r2.x + r2.width
+    local yIntersect = r1.y + r1.height > r2.y and r1.y < r2.y + r2.width
+
+    if xIntersect and yIntersect then
+        object1.handleCollision(r2)
+        object2.handleCollision(r1)
+
+        -- Return explosion so we cna draw it
+    end
+end
