@@ -3,7 +3,7 @@ plane = require("plane")
 map = require("map")
 
 function love.load()
-    plane.init(20, 400, 1, toggleEngine)
+    plane.init(20, 400, 1)
     love.window.setMode(1024, 768)
 end
 
@@ -44,7 +44,5 @@ function checkCollisions(object1, object2)
     if xIntersect and yIntersect then
         object1.handleCollision(r2)
         object2.handleCollision(r1)
-
-        -- Return explosion so we cna draw it
     end
 end

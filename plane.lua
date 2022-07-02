@@ -2,6 +2,7 @@ animation = require("animation")
 particle = require("particle")
 audio = require("audio")
 flipState = require("flipState")
+mathFunc = require("mathFunc")
 
 imageSide = love.graphics.newImage("resources/images/plane_side.png")
 imageTop = love.graphics.newImage("resources/images/plane_top.png")
@@ -36,6 +37,8 @@ function plane.init(x, y, throttle)
     plane.throttle = throttle
     plane.speed = 100
     plane.destroyed = false
+    plane.lastXSpeed = 0
+    plane.lastYSpeed = 0
 
     plane.flipState = flipState.NONE
     plane.flipCooldown = flipCooldownMax
@@ -51,7 +54,7 @@ end
 
 function plane.draw()
     for _, value in pairs(particle.explosions) do
-        love.graphics.draw(value, 0, 0)
+        love.graphics.draw(value.p, 0, 0)
     end
 
     if plane.destroyed then
@@ -151,12 +154,15 @@ function plane.update(dt)
     plane.speed = getSpeed(plane.speed, plane.throttle, plane.engineOn, plane.angle, dt)
     plane.angle = getAngle(plane.angle, plane.stick, plane.speed, dt)
 
-    delta = dt * plane.speed
-    deltaX = math.cos(math.rad(plane.angle - 90)) * delta
-    deltaY = math.sin(math.rad(plane.angle - 90)) * delta
+    local speed = plane.speed
+    local xSpeed = math.cos(math.rad(plane.angle - 90)) * speed
+    local ySpeed = math.sin(math.rad(plane.angle - 90)) * speed
 
-    plane.x = plane.x + deltaX
-    plane.y = plane.y + deltaY
+    plane.lastXSpeed = xSpeed
+    plane.lastYSpeed = ySpeed
+
+    plane.x = plane.x + xSpeed * dt
+    plane.y = plane.y + ySpeed * dt
 end
 
 function getSpeed(speed, throttle, engineOn, angle, dt)
@@ -164,10 +170,10 @@ function getSpeed(speed, throttle, engineOn, angle, dt)
     local throttleModifier = engineOn and 100 or 0
     if gravityMod < 0 then
         targetSpeed = throttle * throttleModifier - gravityMod
-        return lerp(speed, targetSpeed, dt)
+        return mathFunc.lerp(speed, targetSpeed, dt)
     else
         targetSpeed = throttle * throttleModifier - gravityMod
-        return lerp(speed, targetSpeed, dt / 2)
+        return mathFunc.lerp(speed, targetSpeed, dt / 2)
     end
 end
 
@@ -189,17 +195,13 @@ function getAngle(angle, stick, speed, dt)
     -- Start diving if speed is too low
     if speed < 50 then
         if angle < 180 then
-            newAngle = lerp(newAngle, newAngle + 4, dt * 10)
+            newAngle = mathFunc.lerp(newAngle, newAngle + 4, dt * 10)
         else
-            newAngle = lerp(newAngle, newAngle - 4, dt * 10)
+            newAngle = mathFunc.lerp(newAngle, newAngle - 4, dt * 10)
         end
     end
 
     return newAngle
-end
-
-function lerp(a, b, t)
-    return a * (1 - t) + b * t
 end
 
 function updateTimers(plane, dt)
@@ -239,7 +241,7 @@ function plane.handleCollision(rect)
 
     audio.playExplosion()
     audio.killSound()
-    particle.addExplosion(plane.x, plane.y)
+    particle.addExplosion(plane.x, plane.y, plane.lastXSpeed)
 end
 
 return plane

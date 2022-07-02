@@ -1,4 +1,5 @@
 constants = require("constants")
+mathFunc = require("mathFunc")
 
 imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
 imageScrap = love.graphics.newImage("resources/images/scrap.png")
@@ -30,12 +31,12 @@ end
 local function updateSmoke(plane, dt)
     particle.smoke:setPosition(plane.x, plane.y)
     particle.smoke:setDirection(math.rad(plane.angle + 90))
-    particle.smoke:setEmissionRate(plane.engineOn and plane.throttle * 100 or 0)
+    particle.smoke:setEmissionRate(plane.engineOn and plane.throttle * 100 + 10 or 0)
 
     particle.smoke:update(dt)
 end
 
-function particle.addExplosion(x, y)
+function particle.addExplosion(x, y, deltaX)
     local imageData = love.image.newImageData(10, 1)
     for i = 0, 9 do
         imageData:setPixel(i, 0, 1, 0.5, 0, 1)
@@ -54,33 +55,43 @@ function particle.addExplosion(x, y)
     particleSystem:setEmitterLifetime(0.1)
     particleSystem:setEmissionRate(1000)
 
-    table.insert(particle.explosions, particleSystem)
+    table.insert(particle.explosions, {
+        p = particleSystem,
+        dX = deltaX
+    })
 
-    particle.addScrapExplosion(x, y, 15, imageScrap)
-    particle.addScrapExplosion(x, y, 15, imageScrap2)
-    particle.addScrapExplosion(x, y, 5, imageScrap3)
-    particle.addSmokePillar(x, y)
+    particle.addScrapExplosion(x, y, deltaX, 20, imageScrap)
+    particle.addScrapExplosion(x, y, deltaX, 20, imageScrap2)
+    particle.addScrapExplosion(x, y, deltaX, 10, imageScrap3)
+    particle.addSmokePillar(x, y, deltaX)
 end
 
-function particle.addScrapExplosion(x, y, number, image)
-    local particleSystem = love.graphics.newParticleSystem(image, number)
-    particleSystem:setParticleLifetime(1, 2)
-    particleSystem:setSizes(0.1, 0.08)
+function particle.addScrapExplosion(x, y, deltaX, number, image)
+    local particleSystem = love.graphics.newParticleSystem(image, number * 2)
+    particleSystem:setColors(1, 1, 1, 1, 1, 1, 1, 0)
+
+    particleSystem:setParticleLifetime(2, 2)
+    particleSystem:setSizes(0.1, 0.12)
     particleSystem:setSpeed(50, 75)
     particleSystem:setPosition(x, y)
 
-    particleSystem:setSpin(2, 4)
-    particleSystem:setLinearAcceleration(0, 50, 0, 100)
-    particleSystem:setDirection(math.rad(90))
+    particleSystem:setSpin(deltaX > 0 and 4 or -4)
+    particleSystem:setLinearAcceleration(0, 0, 0, 100)
+    particleSystem:setDirection(deltaX > 0 and math.rad(90) or math.rad(270))
     particleSystem:setSpread(math.rad(360))
     particleSystem:setRelativeRotation(true)
-    particleSystem:setEmitterLifetime(0.1)
-    particleSystem:setEmissionRate(1000)
+    particleSystem:setEmitterLifetime(1)
 
-    table.insert(particle.explosions, particleSystem)
+    particleSystem:emit(number)
+    particleSystem:setEmissionRate(number / 4)
+
+    table.insert(particle.explosions, {
+        p = particleSystem,
+        dX = deltaX
+    })
 end
 
-function particle.addSmokePillar(x, y, number)
+function particle.addSmokePillar(x, y, deltaX, number)
     local imageData = love.image.newImageData(1, 1)
     imageData:setPixel(0, 0, 1, 1, 1, 1)
     local image = love.graphics.newImage(imageData)
@@ -94,15 +105,22 @@ function particle.addSmokePillar(x, y, number)
     particleSystem:setSpeed(50, 10)
     particleSystem:setPosition(x, 635)
 
-    particleSystem:emit(500)
-    particleSystem:setEmissionRate(100)
+    particleSystem:emit(150)
+    particleSystem:setEmissionRate(150)
 
-    table.insert(particle.explosions, particleSystem)
+    table.insert(particle.explosions, {
+        p = particleSystem,
+        dX = deltaX
+    })
 end
 
 local function updateExplosions(explosions, dt)
     for i = table.getn(explosions), 1, -1 do
-        local explosion = explosions[i]
+        local explosion = explosions[i].p
+        local dX = explosions[i].dX
+        x, y = explosion:getPosition()
+        explosion:setPosition(x + dt * dX * 0.75, y)
+        explosions[i].dX = mathFunc.lerp(dX, 0, dt)
         explosion:update(dt)
         if explosion:getCount() == 0 then
             table.remove(explosions, i)
