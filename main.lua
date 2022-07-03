@@ -4,7 +4,7 @@ map = require("map")
 
 function love.load()
     plane.init(20, 400, 1)
-    love.window.setMode(1024, 768)
+    love.window.setMode(1920, 768)
 end
 
 function love.draw()
@@ -42,7 +42,7 @@ function checkCollisions(object1, object2)
     local yIntersect = r1.y + r1.height > r2.y and r1.y < r2.y + r2.width
 
     if xIntersect and yIntersect then
-        object1.handleCollision(r2)
-        object2.handleCollision(r1)
+        object1.handleCollision(object2)
+        object2.handleCollision(object1)
     end
 end

@@ -8,32 +8,44 @@ imageScrap3 = love.graphics.newImage("resources/images/scrap3.png")
 
 local particle = {}
 
-particle.smoke = {}
-particle.speedLines = {}
-particle.explosions = {}
-
-local maxParticles = 1000
-
-local function getSmoke()
+function particle.createSmoke()
     local imageData = love.image.newImageData(1, 1)
     imageData:setPixel(0, 0, 0.8, 0.8, 0.8, 0.5)
-    local image = love.graphics.newImage(imageData)
+    local smokePixel = love.graphics.newImage(imageData)
 
-    local particleSystem = love.graphics.newParticleSystem(image, 1000)
-    particleSystem:setParticleLifetime(.7, 1)
-    particleSystem:setSizes(2, 4)
-    particleSystem:setSpread(0.5)
-    particleSystem:setSpeed(20, 30)
+    local smoke = love.graphics.newParticleSystem(smokePixel, 1000)
+    smoke:setParticleLifetime(.7, 1)
+    smoke:setSizes(2, 4)
+    smoke:setSpread(0.5)
+    smoke:setSpeed(20, 30)
 
-    return particleSystem
+    return smoke
 end
 
-local function updateSmoke(plane, dt)
-    particle.smoke:setPosition(plane.x, plane.y)
-    particle.smoke:setDirection(math.rad(plane.angle + 90))
-    particle.smoke:setEmissionRate(plane.engineOn and plane.throttle * 100 + 10 or 0)
+function particle.updateSmoke(smoke, throttle, x, y, angle, dt)
+    smoke:setPosition(x, y)
+    smoke:setDirection(math.rad(angle + 90))
+    smoke:setEmissionRate(throttle * 100)
 
-    particle.smoke:update(dt)
+    smoke:update(dt)
+end
+
+function particle.createSpeedlines()
+    local speedlines = love.graphics.newParticleSystem(imageSpeedLine, 1000)
+    speedlines:setEmissionArea('normal', 0, 5)
+    speedlines:setParticleLifetime(0.1, 0.2)
+    speedlines:setSizes(1, 1)
+    speedlines:setSpeed(200)
+
+    return speedlines
+end
+
+function particle.updateSpeedlines(speedlines, plane, dt)
+    speedlines:setPosition(plane.x, plane.y)
+    speedlines:setDirection(math.rad(plane.angle + 90))
+    speedlines:setEmissionRate(plane.speed >= constants.windThreshold and plane.speed / 4 or 0)
+
+    speedlines:update(dt)
 end
 
 function particle.addExplosion(x, y, deltaX)
@@ -68,21 +80,21 @@ end
 
 function particle.addScrapExplosion(x, y, deltaX, number, image)
     local particleSystem = love.graphics.newParticleSystem(image, number * 2)
-    particleSystem:setColors(1, 1, 1, 1, 1, 1, 1, 0)
+    particleSystem:setColors(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
 
-    particleSystem:setParticleLifetime(2, 2)
+    particleSystem:setParticleLifetime(1)
     particleSystem:setSizes(0.1, 0.12)
     particleSystem:setSpeed(50, 75)
     particleSystem:setPosition(x, y)
 
-    particleSystem:setSpin(deltaX > 0 and 4 or -4)
-    particleSystem:setLinearAcceleration(0, 0, 0, 100)
+    particleSystem:setSpin(deltaX > 0 and 10 or -10)
+    particleSystem:setLinearAcceleration(0, 100)
     particleSystem:setDirection(deltaX > 0 and math.rad(90) or math.rad(270))
     particleSystem:setSpread(math.rad(360))
     particleSystem:setRelativeRotation(true)
     particleSystem:setEmitterLifetime(1)
 
-    particleSystem:emit(number)
+    particleSystem:emit(number / 2)
     particleSystem:setEmissionRate(number / 4)
 
     table.insert(particle.explosions, {
@@ -104,9 +116,10 @@ function particle.addSmokePillar(x, y, deltaX, number)
     particleSystem:setSpread(0.5)
     particleSystem:setSpeed(50, 10)
     particleSystem:setPosition(x, 635)
+    particleSystem:setEmissionArea('normal', 3, 0)
 
     particleSystem:emit(150)
-    particleSystem:setEmissionRate(150)
+    particleSystem:setEmissionRate(450)
 
     table.insert(particle.explosions, {
         p = particleSystem,
@@ -118,7 +131,7 @@ local function updateExplosions(explosions, dt)
     for i = table.getn(explosions), 1, -1 do
         local explosion = explosions[i].p
         local dX = explosions[i].dX
-        x, y = explosion:getPosition()
+        local x, y = explosion:getPosition()
         explosion:setPosition(x + dt * dX * 0.75, y)
         explosions[i].dX = mathFunc.lerp(dX, 0, dt)
         explosion:update(dt)
@@ -128,33 +141,11 @@ local function updateExplosions(explosions, dt)
     end
 end
 
-local function getSpeedLines()
-    local particleSystem = love.graphics.newParticleSystem(imageSpeedLine, 1000)
-    particleSystem:setEmissionArea('normal', 0, 5)
-    particleSystem:setParticleLifetime(0.1, 0.2)
-    particleSystem:setSizes(1, 1)
-    particleSystem:setSpeed(200)
-
-    return particleSystem
-end
-
-local function updateSpeedLines(plane, dt)
-    particle.speedLines:setPosition(plane.x, plane.y)
-    particle.speedLines:setDirection(math.rad(plane.angle + 90))
-    particle.speedLines:setEmissionRate(plane.speed >= constants.windThreshold and plane.speed / 4 or 0)
-
-    particle.speedLines:update(dt)
-end
-
 function particle.init()
-    particle.smoke = getSmoke()
-    particle.speedLines = getSpeedLines()
     particle.explosions = {}
 end
 
 function particle.update(plane, dt)
-    updateSmoke(plane, dt)
-    updateSpeedLines(plane, dt)
     updateExplosions(particle.explosions, dt)
 end
 
