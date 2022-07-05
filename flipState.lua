@@ -1,4 +1,4 @@
-flipState = {
+local flipState = {
     NONE = 0,
     FLIPPED = 1,
     FLIPPING = 2,

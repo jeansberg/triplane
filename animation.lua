@@ -1,5 +1,5 @@
 local animation = {}
-flipState = require("flipState")
+local flipState = require("flipState")
 
 local completeFlipTime = 0.2
 

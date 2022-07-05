@@ -1,10 +1,10 @@
-constants = require("constants")
-mathFunc = require("mathFunc")
+local constants = require("constants")
+local mathFunc = require("mathFunc")
 
-imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
-imageScrap = love.graphics.newImage("resources/images/scrap.png")
-imageScrap2 = love.graphics.newImage("resources/images/scrap2.png")
-imageScrap3 = love.graphics.newImage("resources/images/scrap3.png")
+local imageSpeedLine = love.graphics.newImage("resources/images/speedLine.png")
+local imageScrap = love.graphics.newImage("resources/images/scrap.png")
+local imageScrap2 = love.graphics.newImage("resources/images/scrap2.png")
+local imageScrap3 = love.graphics.newImage("resources/images/scrap3.png")
 
 local particle = {}
 
@@ -128,7 +128,7 @@ function particle.addSmokePillar(x, y, deltaX, number)
 end
 
 local function updateExplosions(explosions, dt)
-    for i = table.getn(explosions), 1, -1 do
+    for i = #explosions, 1, -1 do
         local explosion = explosions[i].p
         local dX = explosions[i].dX
         local x, y = explosion:getPosition()

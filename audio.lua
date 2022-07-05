@@ -1,4 +1,4 @@
-constants = require("constants")
+local constants = require("constants")
 
 local audio = {}
 
@@ -14,7 +14,6 @@ engineLowSound:setLooping(true)
 windSound:setLooping(true)
 
 local engineTurnOnDuration = engineTurnonSound:getDuration("samples")
-local windThreshold = 200
 
 --- Loops an engine sound with pitch depending on throttle
 function audio.playEngine(throttle)

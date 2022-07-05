@@ -1,19 +1,12 @@
-controls = require("controls")
-plane = require("plane")
-map = require("map")
+local plane = require("plane")
+local map = require("map")
 
 function love.load()
     plane.init(20, 400, 1)
     love.window.setMode(1920, 768)
 end
 
-function love.draw()
-    map.draw()
-    plane.draw()
-    drawControls()
-end
-
-function drawControls()
+local function drawControls()
     love.graphics.setColor(0.2, 0.2, 0.2)
     love.graphics.rectangle("line", 880, 650, 20, 70)
     love.graphics.rectangle("fill", 870, 720 - plane.throttle * 40, 40, 10)
@@ -27,14 +20,13 @@ function drawControls()
     love.graphics.print('Angle: ' .. math.ceil(plane.angle), 780, 705)
 end
 
-function love.update(dt)
-    checkCollisions(plane, map)
-    checkCollisions(map, plane)
-
-    plane.update(dt)
+function love.draw()
+    map.draw()
+    plane.draw()
+    drawControls()
 end
 
-function checkCollisions(object1, object2)
+local function checkCollisions(object1, object2)
     local r1 = object1.getCollisionBox()
     local r2 = object2.getCollisionBox()
 
@@ -46,3 +38,12 @@ function checkCollisions(object1, object2)
         object2.handleCollision(object1)
     end
 end
+
+
+function love.update(dt)
+    checkCollisions(plane, map)
+    checkCollisions(map, plane)
+
+    plane.update(dt)
+end
+

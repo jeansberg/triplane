@@ -55,6 +55,7 @@ function plane.init(x, y, throttle)
 end
 
 function plane.draw()
+    local image
     if plane.destroyed then
         image = imageWreck
     elseif plane.flipState == flipState.FLIPPING then
@@ -112,13 +113,13 @@ function love.keypressed(key)
     end
 end
 
-local function updateParticles(plane, dt)
+local function updateParticles(dt)
     particle.updateSmoke(plane.smoke, plane.engineOn and plane.throttle + 0.1 or 0, plane.x, plane.y, plane.angle, dt)
     particle.updateSpeedlines(plane.speedlines, plane, dt)
 end
 
 function plane.update(dt)
-    updateParticles(plane, dt)
+    updateParticles(dt)
     particle.update(plane, dt)
 
     if plane.engineOn then
@@ -149,23 +150,15 @@ function plane.update(dt)
 
     plane.speed = getSpeed(plane.speed, plane.throttle, plane.engineOn, plane.angle, dt)
 
-    plane.lastYSpeed = ySpeed
 
     if plane.grounded then
-        -- Stop rotation when grounded
         plane.y = 635
-
         plane.angle = mathFunc.lerp(plane.angle, 90, dt)
-
-        local speed = plane.speed
-        local xSpeed = math.cos(math.rad(plane.angle - 90)) * speed
-        local ySpeed = math.sin(math.rad(plane.angle - 90)) * speed
 
         plane.x = plane.x + dt * plane.lastXSpeed * 0.75
 
         plane.lastXSpeed = mathFunc.lerp(plane.lastXSpeed, 0, dt)
     else
-
         plane.angle = getAngle(plane.angle, plane.stick, plane.speed, dt)
 
         local speed = plane.speed
@@ -173,6 +166,7 @@ function plane.update(dt)
         local ySpeed = math.sin(math.rad(plane.angle - 90)) * speed
 
         plane.lastXSpeed = xSpeed
+        plane.lastYSpeed = ySpeed
 
         plane.x = plane.x + xSpeed * dt
         plane.y = plane.y + ySpeed * dt
@@ -182,6 +176,7 @@ end
 function getSpeed(speed, throttle, engineOn, angle, dt)
     local gravityMod = math.cos(math.rad(angle)) * 300
     local throttleModifier = engineOn and 100 or 0
+    local targetSpeed
     if gravityMod < 0 then
         targetSpeed = throttle * throttleModifier - gravityMod
         return mathFunc.lerp(speed, targetSpeed, dt)
@@ -192,6 +187,7 @@ function getSpeed(speed, throttle, engineOn, angle, dt)
 end
 
 function getAngle(angle, stick, speed, dt)
+    local newAngle
     if stick == stickState.FORWARD then
         newAngle = angle + dt * 100
     elseif stick == stickState.BACK then
