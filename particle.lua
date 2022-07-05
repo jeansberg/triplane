@@ -48,7 +48,17 @@ function particle.updateSpeedlines(speedlines, plane, dt)
     speedlines:update(dt)
 end
 
-function particle.addExplosion(x, y, deltaX)
+function particle.createExplosionSystems(x, y, deltaX)
+    local initial = particle.addInitialBlast(x, y)
+    local scrap1 = particle.getScrapExplosion(x, y, deltaX, 20, imageScrap)
+    local scrap2 = particle.getScrapExplosion(x, y, deltaX, 20, imageScrap2)
+    local scrap3 = particle.getScrapExplosion(x, y, deltaX, 10, imageScrap3)
+    local smoke = particle.getSmokePillar(x, y, deltaX)
+
+    return {particleSystems ={initial, scrap1, scrap2, scrap3, smoke}, dX = deltaX}
+end
+
+function particle.addInitialBlast(x, y)
     local imageData = love.image.newImageData(10, 1)
     for i = 0, 9 do
         imageData:setPixel(i, 0, 1, 0.5, 0, 1)
@@ -67,18 +77,10 @@ function particle.addExplosion(x, y, deltaX)
     particleSystem:setEmitterLifetime(0.1)
     particleSystem:setEmissionRate(1000)
 
-    table.insert(particle.explosions, {
-        p = particleSystem,
-        dX = deltaX
-    })
-
-    particle.addScrapExplosion(x, y, deltaX, 20, imageScrap)
-    particle.addScrapExplosion(x, y, deltaX, 20, imageScrap2)
-    particle.addScrapExplosion(x, y, deltaX, 10, imageScrap3)
-    particle.addSmokePillar(x, y, deltaX)
+    return particleSystem
 end
 
-function particle.addScrapExplosion(x, y, deltaX, number, image)
+function particle.getScrapExplosion(x, y, deltaX, number, image)
     local particleSystem = love.graphics.newParticleSystem(image, number * 2)
     particleSystem:setColors(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
 
@@ -97,13 +99,10 @@ function particle.addScrapExplosion(x, y, deltaX, number, image)
     particleSystem:emit(number / 2)
     particleSystem:setEmissionRate(number / 4)
 
-    table.insert(particle.explosions, {
-        p = particleSystem,
-        dX = deltaX
-    })
+    return particleSystem
 end
 
-function particle.addSmokePillar(x, y, deltaX, number)
+function particle.getSmokePillar(x, y, deltaX, number)
     local imageData = love.image.newImageData(1, 1)
     imageData:setPixel(0, 0, 1, 1, 1, 1)
     local image = love.graphics.newImage(imageData)
@@ -121,32 +120,22 @@ function particle.addSmokePillar(x, y, deltaX, number)
     particleSystem:emit(150)
     particleSystem:setEmissionRate(450)
 
-    table.insert(particle.explosions, {
-        p = particleSystem,
-        dX = deltaX
-    })
+    return particleSystem
 end
 
-local function updateExplosions(explosions, dt)
-    for i = #explosions, 1, -1 do
-        local explosion = explosions[i].p
-        local dX = explosions[i].dX
+function particle.updateExplosions(explosions, dt)
+    local dX = explosions.dX
+    for i = #explosions.particleSystems, 1, -1 do
+        local explosion = explosions.particleSystems[i]
         local x, y = explosion:getPosition()
         explosion:setPosition(x + dt * dX * 0.75, y)
-        explosions[i].dX = mathFunc.lerp(dX, 0, dt)
+        explosions.dX = mathFunc.lerp(dX, 0, dt)
         explosion:update(dt)
         if explosion:getCount() == 0 then
-            table.remove(explosions, i)
+            table.remove(explosions.particleSystems, i)
         end
     end
-end
-
-function particle.init()
-    particle.explosions = {}
-end
-
-function particle.update(plane, dt)
-    updateExplosions(particle.explosions, dt)
+    print (#explosions.particleSystems)
 end
 
 return particle

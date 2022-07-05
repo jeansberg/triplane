@@ -48,10 +48,9 @@ function plane.init(x, y, throttle)
 
     plane.engineCooldown = engineCooldownMax
 
-    particle.init()
-
     plane.smoke = particle.createSmoke()
     plane.speedlines = particle.createSpeedlines()
+    plane.explosion = { particleSystems = {} }
 end
 
 function plane.draw()
@@ -74,8 +73,8 @@ function plane.draw()
             image:getHeight() / 2)
     end
 
-    for _, value in pairs(particle.explosions) do
-        love.graphics.draw(value.p, 0, 0)
+    for _, p in pairs(plane.explosion.particleSystems) do
+        love.graphics.draw(p, 0, 0)
     end
 
     if plane.destroyed then
@@ -108,19 +107,17 @@ function love.keypressed(key)
     elseif key == 'e' and plane.engineCooldown > engineCooldownMax then
         plane.engineCooldown = 0
         plane.toggleEngine()
-    elseif key == 'x' then
-        particle.addExplosion(400, 400)
     end
 end
 
 local function updateParticles(dt)
     particle.updateSmoke(plane.smoke, plane.engineOn and plane.throttle + 0.1 or 0, plane.x, plane.y, plane.angle, dt)
     particle.updateSpeedlines(plane.speedlines, plane, dt)
+    particle.updateExplosions(plane.explosion, dt)
 end
 
 function plane.update(dt)
     updateParticles(dt)
-    particle.update(plane, dt)
 
     if plane.engineOn then
         audio.playEngine(plane.throttle)
@@ -254,7 +251,7 @@ function plane.handleCollision(object)
 
         audio.playExplosion()
         audio.killSound()
-        particle.addExplosion(plane.x, plane.y, plane.lastXSpeed)
+        plane.explosion = particle.createExplosionSystems(plane.x, plane.y, plane.lastXSpeed)
     end
 end
 
