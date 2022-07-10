@@ -40,10 +40,10 @@ function particle.createSpeedlines()
     return speedlines
 end
 
-function particle.updateSpeedlines(speedlines, plane, dt)
-    speedlines:setPosition(plane.x, plane.y)
-    speedlines:setDirection(math.rad(plane.angle + 90))
-    speedlines:setEmissionRate(plane.speed >= constants.windThreshold and plane.speed / 4 or 0)
+function particle.updateSpeedlines(speedlines, x, y, angle, speed, dt)
+    speedlines:setPosition(x, y)
+    speedlines:setDirection(math.rad(angle + 90))
+    speedlines:setEmissionRate(speed >= constants.windThreshold and speed / 4 or 0)
 
     speedlines:update(dt)
 end

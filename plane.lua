@@ -29,73 +29,92 @@ local flipCooldownMax = 0.5
 local flipAnimationTimerMax = 0.2
 local engineCooldownMax = 2
 
-function plane.init(x, y, throttle)
-    plane.x = x
-    plane.y = y
-    plane.engineOn = 1
-    plane.stick = 0
-    plane.angle = 90
-    plane.throttle = throttle
-    plane.speed = 100
-    plane.destroyed = false
-    plane.grounded = false
-    plane.lastXSpeed = 0
-    plane.lastYSpeed = 0
-
-    plane.flipState = flipState.NONE
-    plane.flipCooldown = flipCooldownMax
-    plane.flipAnimationTimer = flipAnimationTimerMax
-
-    plane.engineCooldown = engineCooldownMax
-
-    plane.smoke = particle.createSmoke()
-    plane.speedlines = particle.createSpeedlines()
-    plane.explosion = { particleSystems = {} }
+function plane:new(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
 end
 
-function plane.draw()
+function plane.createPlayer(x, y, throttle)
+    local newPlane = plane:new { x = x,
+        y = y,
+        engineOn = 1,
+        stick = 0,
+        angle = 90,
+        throttle = throttle,
+        speed = 100,
+        destroyed = false,
+        grounded = false,
+        lastXSpeed = 0,
+        lastYSpeed = 0,
+
+        flipState = flipState.NONE,
+        flipCooldown = flipCooldownMax,
+        flipAnimationTimer = flipAnimationTimerMax,
+
+        engineCooldown = engineCooldownMax,
+
+        smoke = particle.createSmoke(),
+        speedlines = particle.createSpeedlines(),
+        explosion = { particleSystems = {} },
+
+        sounds = {
+            engine = audio.createEngine(),
+            engineLow = audio.createLow(),
+            engineTurnoff = audio.createEngineTurnOff(),
+            engineTurnon = audio.createEngineTurnOn(),
+            wind = audio.createWind(),
+            explosion = audio.createExplosion()
+        }
+    }
+
+    return newPlane
+end
+
+function plane.draw(p)
     local image
-    if plane.destroyed then
+    if p.destroyed then
         image = imageWreck
-    elseif plane.flipState == flipState.FLIPPING then
+    elseif p.flipState == flipState.FLIPPING then
         image = imageTop
-    elseif plane.flipState == flipState.FLIPPING_BACK then
+    elseif p.flipState == flipState.FLIPPING_BACK then
         image = imageBottom
     else
         image = imageSide
     end
 
-    if plane.flipState == flipState.NONE then
-        love.graphics.draw(image, plane.x, plane.y, math.rad(plane.angle - 90), 0.2, 0.2, image:getWidth() / 2,
+    if p.flipState == flipState.NONE then
+        love.graphics.draw(image, p.x, p.y, math.rad(p.angle - 90), 0.2, 0.2, image:getWidth() / 2,
             image:getHeight() / 2)
     else
-        love.graphics.draw(image, plane.x, plane.y, math.rad(plane.angle - 90), 0.2, -0.2, image:getWidth() / 2,
+        love.graphics.draw(image, p.x, p.y, math.rad(p.angle - 90), 0.2, -0.2, image:getWidth() / 2,
             image:getHeight() / 2)
     end
 
-    for _, p in pairs(plane.explosion.particleSystems) do
+    for _, p in pairs(p.explosion.particleSystems) do
         love.graphics.draw(p, 0, 0)
     end
 
-    if plane.destroyed then
+    if p.destroyed then
         return
     end
 
-    love.graphics.draw(plane.smoke, 0, 0)
-    love.graphics.draw(plane.speedlines, 0, 0)
+    love.graphics.draw(p.smoke, 0, 0)
+    love.graphics.draw(p.speedlines, 0, 0)
 end
 
-function plane.toggleEngine()
-    if plane.destroyed then
+function plane.toggleEngine(p)
+    if p.destroyed then
         return
     end
 
-    plane.engineOn = not plane.engineOn
-    if not plane.engineOn then
-        audio.playTurnoff()
-        plane.throttle = 0.5
+    p.engineOn = not p.engineOn
+    if not p.engineOn then
+        audio.playTurnoff(p.sounds)
+        p.throttle = 0.5
     else
-        audio.playTurnon()
+        audio.playTurnon(p.sounds)
     end
 end
 
@@ -103,74 +122,22 @@ function love.keypressed(key)
     if key == controlKey.FLIP and plane.flipCooldown >= flipCooldownMax then
         animation.startFlip(plane)
     elseif key == 'r' then
-        plane.init(20, 400, 1)
+        plane.create(20, 400, 1)
     elseif key == 'e' and plane.engineCooldown > engineCooldownMax then
         plane.engineCooldown = 0
         plane.toggleEngine()
+    elseif key == 'x' then
+        plane.destroy(Player)
     end
 end
 
-local function updateParticles(dt)
-    particle.updateSmoke(plane.smoke, plane.engineOn and plane.throttle + 0.1 or 0, plane.x, plane.y, plane.angle, dt)
-    particle.updateSpeedlines(plane.speedlines, plane, dt)
-    particle.updateExplosions(plane.explosion, dt)
+local function updateParticles(p, dt)
+    particle.updateSmoke(p.smoke, p.engineOn and p.throttle + 0.1 or 0, p.x, p.y, p.angle, dt)
+    particle.updateSpeedlines(p.speedlines, p.x, p.y, p.angle, p.speed, dt)
+    particle.updateExplosions(p.explosion, dt)
 end
 
-function plane.update(dt)
-    updateParticles(dt)
-
-    if plane.engineOn then
-        audio.playEngine(plane.throttle)
-
-        if love.keyboard.isDown(controlKey.UP) then
-            plane.throttle = math.min(2, plane.throttle + dt)
-        elseif love.keyboard.isDown(controlKey.DOWN) then
-            plane.throttle = math.max(plane.throttle - dt, 0)
-        end
-    end
-
-    if not plane.destroyed then
-        audio.playWind(plane.speed)
-        updateTimers(plane, dt)
-        animation.updateFlip(plane)
-    end
-
-    if not plane.destroyed then
-        if love.keyboard.isDown(controlKey.LEFT) then
-            plane.stick = plane.flipState == flipState.FLIPPED and stickState.FORWARD or stickState.BACK
-        elseif love.keyboard.isDown(controlKey.RIGHT) then
-            plane.stick = plane.flipState == flipState.FLIPPED and stickState.BACK or stickState.FORWARD
-        else
-            plane.stick = stickState.NEUTRAL
-        end
-    end
-
-    plane.speed = getSpeed(plane.speed, plane.throttle, plane.engineOn, plane.angle, dt)
-
-
-    if plane.grounded then
-        plane.y = 635
-        plane.angle = mathFunc.lerp(plane.angle, 90, dt)
-
-        plane.x = plane.x + dt * plane.lastXSpeed * 0.75
-
-        plane.lastXSpeed = mathFunc.lerp(plane.lastXSpeed, 0, dt)
-    else
-        plane.angle = getAngle(plane.angle, plane.stick, plane.speed, dt)
-
-        local speed = plane.speed
-        local xSpeed = math.cos(math.rad(plane.angle - 90)) * speed
-        local ySpeed = math.sin(math.rad(plane.angle - 90)) * speed
-
-        plane.lastXSpeed = xSpeed
-        plane.lastYSpeed = ySpeed
-
-        plane.x = plane.x + xSpeed * dt
-        plane.y = plane.y + ySpeed * dt
-    end
-end
-
-function getSpeed(speed, throttle, engineOn, angle, dt)
+local function getSpeed(speed, throttle, engineOn, angle, dt)
     local gravityMod = math.cos(math.rad(angle)) * 300
     local throttleModifier = engineOn and 100 or 0
     local targetSpeed
@@ -183,7 +150,7 @@ function getSpeed(speed, throttle, engineOn, angle, dt)
     end
 end
 
-function getAngle(angle, stick, speed, dt)
+local function getAngle(angle, stick, speed, dt)
     local newAngle
     if stick == stickState.FORWARD then
         newAngle = angle + dt * 100
@@ -211,23 +178,77 @@ function getAngle(angle, stick, speed, dt)
     return newAngle
 end
 
-function updateTimers(plane, dt)
-    if plane.flipCooldown <= flipCooldownMax then
-        plane.flipCooldown = plane.flipCooldown + dt
+function plane.update(p, dt)
+    updateParticles(p, dt)
+
+    if p.engineOn then
+        audio.playEngine(p.sounds, p.throttle)
+
+        if love.keyboard.isDown(controlKey.UP) then
+            p.throttle = math.min(2, p.throttle + dt)
+        elseif love.keyboard.isDown(controlKey.DOWN) then
+            p.throttle = math.max(p.throttle - dt, 0)
+        end
     end
 
-    if plane.flipAnimationTimer <= flipAnimationTimerMax then
-        plane.flipAnimationTimer = plane.flipAnimationTimer + dt
+    if not p.destroyed then
+        audio.playWind(p.sounds.wind, p.speed)
+        updateTimers(p, dt)
+        animation.updateFlip(p)
     end
 
-    if plane.engineCooldown <= engineCooldownMax then
-        plane.engineCooldown = plane.engineCooldown + dt
+    if not p.destroyed then
+        if love.keyboard.isDown(controlKey.LEFT) then
+            p.stick = p.flipState == flipState.FLIPPED and stickState.FORWARD or stickState.BACK
+        elseif love.keyboard.isDown(controlKey.RIGHT) then
+            p.stick = p.flipState == flipState.FLIPPED and stickState.BACK or stickState.FORWARD
+        else
+            p.stick = stickState.NEUTRAL
+        end
+    end
+
+    p.speed = getSpeed(p.speed, p.throttle, p.engineOn, p.angle, dt)
+
+
+    if p.grounded then
+        p.y = 635
+        p.angle = mathFunc.lerp(p.angle, 90, dt)
+
+        p.x = p.x + dt * p.lastXSpeed * 0.75
+
+        p.lastXSpeed = mathFunc.lerp(p.lastXSpeed, 0, dt)
+    else
+        p.angle = getAngle(p.angle, p.stick, p.speed, dt)
+
+        local speed = p.speed
+        local xSpeed = math.cos(math.rad(p.angle - 90)) * speed
+        local ySpeed = math.sin(math.rad(p.angle - 90)) * speed
+
+        p.lastXSpeed = xSpeed
+        p.lastYSpeed = ySpeed
+
+        p.x = p.x + xSpeed * dt
+        p.y = p.y + ySpeed * dt
     end
 end
 
-function plane.getCollisionBox()
-    local x = plane.x
-    local y = plane.y
+function updateTimers(p, dt)
+    if p.flipCooldown <= flipCooldownMax then
+        p.flipCooldown = p.flipCooldown + dt
+    end
+
+    if p.flipAnimationTimer <= flipAnimationTimerMax then
+        p.flipAnimationTimer = p.flipAnimationTimer + dt
+    end
+
+    if p.engineCooldown <= engineCooldownMax then
+        p.engineCooldown = p.engineCooldown + dt
+    end
+end
+
+function plane.getCollisionBox(p)
+    local x = p.x
+    local y = p.y
     local width = 280 / 5
     local height = 142 / 5
 
@@ -239,19 +260,23 @@ function plane.getCollisionBox()
     }
 end
 
-function plane.handleCollision(object)
-    if plane.destroyed then
+function plane.destroy(p)
+    p.grounded = true
+    p.destroyed = true
+    p.engineOn = false
+
+    audio.playExplosion(p.sounds.explosion)
+    audio.killSound(p.sounds)
+    p.explosion = particle.createExplosionSystems(p.x, p.y, p.lastXSpeed)
+end
+
+function plane.handleCollision(p, object)
+    if p.destroyed then
         return
     end
 
     if object.isMap then
-        plane.grounded = true
-        plane.destroyed = true
-        plane.engineOn = false
-
-        audio.playExplosion()
-        audio.killSound()
-        plane.explosion = particle.createExplosionSystems(plane.x, plane.y, plane.lastXSpeed)
+        plane.destroy(p)
     end
 end
 
