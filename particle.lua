@@ -26,15 +26,15 @@ function particle.updateSmoke(smoke, throttle, x, y, angle, dt)
     smoke:setPosition(x, y)
     smoke:setDirection(math.rad(angle + 90))
     smoke:setEmissionRate(throttle * 100)
-
     smoke:update(dt)
 end
 
 function particle.createSpeedlines()
     local speedlines = love.graphics.newParticleSystem(imageSpeedLine, 1000)
     speedlines:setEmissionArea('normal', 0, 5)
-    speedlines:setParticleLifetime(0.1, 0.2)
+    speedlines:setParticleLifetime(0.05, 0.1)
     speedlines:setSizes(1, 1)
+    speedlines:setColors(0, 0, 0, 1)
     speedlines:setSpeed(200)
 
     return speedlines
@@ -43,7 +43,8 @@ end
 function particle.updateSpeedlines(speedlines, x, y, angle, speed, dt)
     speedlines:setPosition(x, y)
     speedlines:setDirection(math.rad(angle + 90))
-    speedlines:setEmissionRate(speed >= constants.windThreshold and speed / 4 or 0)
+    speedlines:setRotation(math.rad(angle + 90))
+    speedlines:setEmissionRate(speed >= constants.windThreshold and speed / 8 or 0)
 
     speedlines:update(dt)
 end
@@ -55,7 +56,7 @@ function particle.createExplosionSystems(x, y, deltaX)
     local scrap3 = particle.getScrapExplosion(x, y, deltaX, 10, imageScrap3)
     local smoke = particle.getSmokePillar(x, y, deltaX)
 
-    return {particleSystems ={initial, scrap1, scrap2, scrap3, smoke}, dX = deltaX}
+    return { particleSystems = { initial, scrap1, scrap2, scrap3, smoke }, dX = deltaX }
 end
 
 function particle.addInitialBlast(x, y)
@@ -135,7 +136,6 @@ function particle.updateExplosions(explosions, dt)
             table.remove(explosions.particleSystems, i)
         end
     end
-    print (#explosions.particleSystems)
 end
 
 return particle

@@ -4,16 +4,22 @@ map.image2 = love.graphics.newImage("resources/images/background2.png")
 
 map.isMap = true
 
---- Draws the background
-function map.draw()
-    love.graphics.draw(map.image)
-    love.graphics.draw(map.image2, 1024)
+function map:new(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+
+function map.draw(self)
+    love.graphics.draw(self.image)
+    love.graphics.draw(self.image2, 1024)
 end
 
 function map.getCollisionBox()
     local x = 0
     local y = 635
-    local width = 1920
+    local width = 2048
     local height = 768 - 635
 
     return {

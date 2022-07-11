@@ -72,69 +72,70 @@ function plane.createPlayer(x, y, throttle)
     return newPlane
 end
 
-function plane.draw(p)
+function plane.draw(self)
     local image
-    if p.destroyed then
+    if self.destroyed then
         image = imageWreck
-    elseif p.flipState == flipState.FLIPPING then
+    elseif self.flipState == flipState.FLIPPING then
         image = imageTop
-    elseif p.flipState == flipState.FLIPPING_BACK then
+    elseif self.flipState == flipState.FLIPPING_BACK then
         image = imageBottom
     else
         image = imageSide
     end
 
-    if p.flipState == flipState.NONE then
-        love.graphics.draw(image, p.x, p.y, math.rad(p.angle - 90), 0.2, 0.2, image:getWidth() / 2,
+    if self.flipState == flipState.NONE then
+        love.graphics.draw(image, self.x, self.y, math.rad(self.angle - 90), 0.2, 0.2, image:getWidth() / 2,
             image:getHeight() / 2)
     else
-        love.graphics.draw(image, p.x, p.y, math.rad(p.angle - 90), 0.2, -0.2, image:getWidth() / 2,
+        love.graphics.draw(image, self.x, self.y, math.rad(self.angle - 90), 0.2, -0.2, image:getWidth() / 2,
             image:getHeight() / 2)
     end
 
-    for _, p in pairs(p.explosion.particleSystems) do
+    for _, p in pairs(self.explosion.particleSystems) do
         love.graphics.draw(p, 0, 0)
     end
 
-    if p.destroyed then
+    if self.destroyed then
         return
     end
 
-    love.graphics.draw(p.smoke, 0, 0)
-    love.graphics.draw(p.speedlines, 0, 0)
+    love.graphics.draw(self.smoke, 0, 0)
+    love.graphics.draw(self.speedlines, 0, 0)
 end
 
-function plane.toggleEngine(p)
-    if p.destroyed then
+function plane.toggleEngine(self)
+    if self.destroyed then
         return
     end
 
-    p.engineOn = not p.engineOn
-    if not p.engineOn then
-        audio.playTurnoff(p.sounds)
-        p.throttle = 0.5
+    self.engineOn = not self.engineOn
+    if not self.engineOn then
+        audio.playTurnoff(self.sounds)
+        self.throttle = 0.5
     else
-        audio.playTurnon(p.sounds)
+        audio.playTurnon(self.sounds)
     end
 end
 
 function love.keypressed(key)
-    if key == controlKey.FLIP and plane.flipCooldown >= flipCooldownMax then
-        animation.startFlip(plane)
+    if key == controlKey.FLIP and Player.flipCooldown >= flipCooldownMax then
+        animation.startFlip(Player)
     elseif key == 'r' then
-        plane.create(20, 400, 1)
-    elseif key == 'e' and plane.engineCooldown > engineCooldownMax then
-        plane.engineCooldown = 0
-        plane.toggleEngine()
+        Player:destroy()
+        Player = plane.createPlayer(20, 400, 1)
+    elseif key == 'e' and Player.engineCooldown > engineCooldownMax then
+        Player.engineCooldown = 0
+        Player:toggleEngine()
     elseif key == 'x' then
-        plane.destroy(Player)
+        Player:destroy()
     end
 end
 
-local function updateParticles(p, dt)
-    particle.updateSmoke(p.smoke, p.engineOn and p.throttle + 0.1 or 0, p.x, p.y, p.angle, dt)
-    particle.updateSpeedlines(p.speedlines, p.x, p.y, p.angle, p.speed, dt)
-    particle.updateExplosions(p.explosion, dt)
+function plane.updateParticles(self, dt)
+    particle.updateSmoke(self.smoke, self.engineOn and self.throttle + 0.1 or 0, self.x, self.y, self.angle, dt)
+    particle.updateSpeedlines(self.speedlines, self.x, self.y, self.angle, self.speed, dt)
+    particle.updateExplosions(self.explosion, dt)
 end
 
 local function getSpeed(speed, throttle, engineOn, angle, dt)
@@ -179,7 +180,7 @@ local function getAngle(angle, stick, speed, dt)
 end
 
 function plane.update(p, dt)
-    updateParticles(p, dt)
+    p:updateParticles(dt)
 
     if p.engineOn then
         audio.playEngine(p.sounds, p.throttle)
@@ -246,9 +247,9 @@ function updateTimers(p, dt)
     end
 end
 
-function plane.getCollisionBox(p)
-    local x = p.x
-    local y = p.y
+function plane.getCollisionBox(self)
+    local x = self.x
+    local y = self.y
     local width = 280 / 5
     local height = 142 / 5
 
@@ -260,23 +261,23 @@ function plane.getCollisionBox(p)
     }
 end
 
-function plane.destroy(p)
-    p.grounded = true
-    p.destroyed = true
-    p.engineOn = false
+function plane.destroy(self)
+    self.grounded = true
+    self.destroyed = true
+    self.engineOn = false
 
-    audio.playExplosion(p.sounds.explosion)
-    audio.killSound(p.sounds)
-    p.explosion = particle.createExplosionSystems(p.x, p.y, p.lastXSpeed)
+    audio.playExplosion(self.sounds.explosion)
+    audio.killSound(self.sounds)
+    self.explosion = particle.createExplosionSystems(self.x, self.y, self.lastXSpeed)
 end
 
-function plane.handleCollision(p, object)
-    if p.destroyed then
+function plane.handleCollision(self, object)
+    if self.destroyed then
         return
     end
 
     if object.isMap then
-        plane.destroy(p)
+        self:destroy(p)
     end
 end
 
