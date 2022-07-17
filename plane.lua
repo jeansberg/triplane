@@ -36,7 +36,7 @@ function plane:new(o)
     return o
 end
 
-function plane.createPlayer(x, y, throttle)
+function plane.createPlane(x, y, throttle)
     local newPlane = plane:new { x = x,
         y = y,
         engineOn = 1,
@@ -123,7 +123,7 @@ function love.keypressed(key)
         animation.startFlip(Player)
     elseif key == 'r' then
         Player:destroy()
-        Player = plane.createPlayer(20, 400, 1)
+        Player = plane.createPlane(20, 400, 1)
     elseif key == 'e' and Player.engineCooldown > engineCooldownMax then
         Player.engineCooldown = 0
         Player:toggleEngine()
@@ -185,10 +185,12 @@ function plane.update(p, dt)
     if p.engineOn then
         audio.playEngine(p.sounds, p.throttle)
 
-        if love.keyboard.isDown(controlKey.UP) then
-            p.throttle = math.min(2, p.throttle + dt)
-        elseif love.keyboard.isDown(controlKey.DOWN) then
-            p.throttle = math.max(p.throttle - dt, 0)
+        if p == Player then
+            if love.keyboard.isDown(controlKey.UP) then
+                p.throttle = math.min(2, p.throttle + dt)
+            elseif love.keyboard.isDown(controlKey.DOWN) then
+                p.throttle = math.max(p.throttle - dt, 0)
+            end
         end
     end
 
@@ -196,20 +198,19 @@ function plane.update(p, dt)
         audio.playWind(p.sounds.wind, p.speed)
         updateTimers(p, dt)
         animation.updateFlip(p)
-    end
 
-    if not p.destroyed then
-        if love.keyboard.isDown(controlKey.LEFT) then
-            p.stick = p.flipState == flipState.FLIPPED and stickState.FORWARD or stickState.BACK
-        elseif love.keyboard.isDown(controlKey.RIGHT) then
-            p.stick = p.flipState == flipState.FLIPPED and stickState.BACK or stickState.FORWARD
-        else
-            p.stick = stickState.NEUTRAL
+        if p == Player then
+            if love.keyboard.isDown(controlKey.LEFT) then
+                p.stick = p.flipState == flipState.FLIPPED and stickState.FORWARD or stickState.BACK
+            elseif love.keyboard.isDown(controlKey.RIGHT) then
+                p.stick = p.flipState == flipState.FLIPPED and stickState.BACK or stickState.FORWARD
+            else
+                p.stick = stickState.NEUTRAL
+            end
         end
     end
 
     p.speed = getSpeed(p.speed, p.throttle, p.engineOn, p.angle, dt)
-
 
     if p.grounded then
         p.y = 635
